@@ -250,19 +250,20 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    probe_protocol(
+    probe_binary(
         "language server",
         lang.language_server
             .as_ref()
             .map(|lsp| lsp.command.to_string()),
     )?;
 
-    probe_protocol(
+    probe_binary(
         "debug adapter",
         lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     )?;
 
-    probe_commands(
+    probe_binary(
+        "formatter",
         lang.formatter
             .as_ref()
             .map(|fmtcfg| fmtcfg.command.to_string()),
@@ -275,25 +276,8 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Display any additional binaries that are configured as commands for the
-/// language.
-fn probe_commands(formatter_cmd: Option<String>) -> std::io::Result<()> {
-    let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
-
-    if let Some(cmd) = formatter_cmd {
-        let path = match which::which(&cmd) {
-            Ok(path) => path.display().to_string().green(),
-            Err(_) => format!("'{}' not found in $PATH", cmd).red(),
-        };
-        writeln!(stdout, "Binary for formatter: {}", path)?;
-    }
-
-    Ok(())
-}
-
-/// Display diagnostics about LSP and DAP.
-fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::Result<()> {
+/// Display diagnostics about binaries related to the language.
+fn probe_binary(use_case: &str, server_cmd: Option<String>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
@@ -301,14 +285,14 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
         Some(ref cmd) => cmd.as_str().green(),
         None => "None".yellow(),
     };
-    writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
+    writeln!(stdout, "Configured {}: {}", use_case, cmd_name)?;
 
     if let Some(cmd) = server_cmd {
         let path = match which::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
             Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };
-        writeln!(stdout, "Binary for {}: {}", protocol_name, path)?;
+        writeln!(stdout, "Binary for {}: {}", use_case, path)?;
     }
 
     Ok(())
